@@ -1,0 +1,24 @@
+# Raw data never goes in Git; it lives in a Unity Catalog volume
+data/
+raw_data/
+*.csv
+*.zip
+
+# Databricks CLI / Asset Bundle local state
+.databricks/
+.databrickscfg
+
+# Secrets
+.env
+*.pem
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
