@@ -96,3 +96,18 @@ ORDER BY order_month;
 
 **What worked:** the Unity Catalog table comments in pipelines/03_gold.sql were enough for correct SQL with no setup.
 **What failed:** the data has no currency column, so Genie assumed USD. Fixed with a currency rule in the general instructions.
+
+
+## Benchmarks (10 questions with ground-truth SQL: genie/benchmarks.sql)
+
+| Run | Score | Changed before this run | Failures |
+|---|---|---|---|
+| 1 | 80% (8/10) | Nothing (starting point) | Q9 payment method: counted all order statuses. Q10 repeat vs one-time: grouped by customer_segment, so VIPs were split out of "repeat". |
+| 2 | 90% (9/10) | Added 2 general rules: delivered orders are the default scope; how to group repeat vs one-time | Q9: our ground truth included 1 delivered order with no payment record (null payment type). Genie excluded it, which is correct. |
+| 3 | 90% (9/10); 100% after manual review | Fixed the Q9 ground truth to exclude the null payment type | Q4 on-time vs late: same averages as the ground truth, plus extra statistics (count, min, percentiles, max). Reviewed and marked correct. |
+
+**How the failures were handled**
+- Fixed with general rules, never by adding a benchmark question as a trusted example. Copying the test would make the score meaningless for questions Genie has not seen.
+- Regression check: Q7 (canceled orders) still passed after adding the "delivered by default" rule.
+- Not every failure was Genie's fault. In run 2 the ground truth was wrong, and fixing it uncovered a data edge case: one delivered order has no payment record.
+- Q4 passed in runs 1–2 and failed in run 3 with no related change. The same question can produce different SQL on different runs, and the grader (also an LLM) marks down extra columns. One run's score is noisy: re-run before trusting a change, and review "Bad" verdicts by hand.
