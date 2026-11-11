@@ -60,3 +60,4 @@ GROUP BY 1 ORDER BY 2 DESC LIMIT 5;
 SELECT round(avg(lifetime_value), 2) AS avg_ltv
 FROM workspace.gold.dim_customers
 WHERE total_orders > 0;
+     
