@@ -86,6 +86,33 @@ SELECT
   round((total_revenue - prev_month_revenue) / nullif(prev_month_revenue, 0) * 100, 2) AS revenue_growth_pct
 FROM with_prev;
 
+CREATE OR REFRESH MATERIALIZED VIEW gold.fact_order_items (
+  CONSTRAINT order_id_not_null      EXPECT (order_id IS NOT NULL)      ON VIOLATION FAIL UPDATE,
+  CONSTRAINT order_item_id_not_null EXPECT (order_item_id IS NOT NULL) ON VIOLATION FAIL UPDATE,
+  CONSTRAINT product_id_not_null    EXPECT (product_id IS NOT NULL)    ON VIOLATION FAIL UPDATE,
+  -- Fails if an item has no matching order (the LEFT JOIN would leave status empty).
+  CONSTRAINT order_status_not_null  EXPECT (order_status IS NOT NULL)  ON VIOLATION FAIL UPDATE
+)
+COMMENT 'One row per order item (order_id + order_item_id), with product category, seller, and the order''s status, date and customer. Use for any product, category or seller question. Item revenue is item_price (excludes freight); filter order_status = ''delivered'' for delivered revenue. Count orders with count(DISTINCT order_id), not rows. Added after Genie answered a category question from dim_products, which mixes all order statuses.'
+AS SELECT
+  i.order_id,
+  i.order_item_id,
+  i.product_id,
+  i.product_category,
+  i.seller_id,
+  i.seller_city,
+  i.seller_state,
+  o.customer_unique_id,
+  o.customer_state,
+  o.order_status,
+  o.ordered_at,
+  CAST(date_trunc('MONTH', o.ordered_at) AS DATE) AS order_month,
+  i.item_price,
+  i.freight_price,
+  i.total_item_amount
+FROM silver.int_order_items_enriched i
+LEFT JOIN silver.int_orders_enriched o ON i.order_id = o.order_id;
+
 ---------------------------------------------------------------- dimensions
 
 CREATE OR REFRESH MATERIALIZED VIEW gold.dim_customers (
@@ -147,7 +174,7 @@ CROSS JOIN data_end e;
 CREATE OR REFRESH MATERIALIZED VIEW gold.dim_products (
   CONSTRAINT product_id_not_null EXPECT (product_id IS NOT NULL) ON VIOLATION FAIL UPDATE
 )
-COMMENT 'One row per product, with sales totals from all order items (any order status). Category names are in Portuguese.'
+COMMENT 'One row per product, with product attributes and sales totals from all order items of ANY status (including canceled). Use for product attributes; for revenue or orders by category, use fact_order_items filtered to delivered orders. Category names are in Portuguese.'
 AS
 WITH sales AS (
   SELECT
@@ -181,5 +208,6 @@ CREATE OR REFRESH MATERIALIZED VIEW gold.dq_primary_keys (
 COMMENT 'Data quality check: each gold table has one row per primary key. The run fails if any key is duplicated.'
 AS
           SELECT 'fact_orders'   AS table_name, count(*) - count(DISTINCT order_id)           AS duplicate_keys FROM gold.fact_orders
+UNION ALL SELECT 'fact_order_items',            count(*) - count(DISTINCT order_id, order_item_id)              FROM gold.fact_order_items
 UNION ALL SELECT 'dim_customers',               count(*) - count(DISTINCT customer_unique_id)                   FROM gold.dim_customers
 UNION ALL SELECT 'dim_products',                count(*) - count(DISTINCT product_id)                           FROM gold.dim_products;
