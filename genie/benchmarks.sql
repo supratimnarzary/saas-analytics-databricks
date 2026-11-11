@@ -68,11 +68,15 @@ GROUP BY year(ordered_at)
 ORDER BY order_year;
 
 -- Q9: Which payment method do customers use most?
+--     One delivered order has no payment record (primary_payment_type is null);
+--     it is excluded because it is not a payment method.
 SELECT primary_payment_type, count(*) AS delivered_orders
 FROM workspace.gold.fact_orders
 WHERE order_status = 'delivered'
+  AND primary_payment_type IS NOT NULL
 GROUP BY primary_payment_type
 ORDER BY delivered_orders DESC;
+
 
 -- Q10: Do repeat customers spend more over their lifetime than one-time customers?
 --      Trap: comparing only the 'repeat' segment and leaving out 'vip'.

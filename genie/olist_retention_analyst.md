@@ -17,6 +17,9 @@ Business definitions
 - Repeat customers have total_orders >= 2. This includes both the 'repeat' (2-4 orders) and 'vip' (5+ orders) segments.
 - Revenue is SUM(total_payment_amount) from fact_orders where order_status = 'delivered', unless the user asks for another status.
 - On-time rate is the share of delivered orders where delivered_on_time is true.
+- Default scope: unless the user names an order status (for example canceled or shipped), every order count, payment-method count and revenue figure uses delivered orders only. Say "delivered orders" in the answer.
+- Repeat vs one-time comparisons: group buyers as total_orders >= 2 = 'repeat' (this includes vip) and total_orders = 1 = 'one_time'. Use customer_segment only when the user asks about segments or VIP customers.
+
 
 Dates
 - Data covers Sep 2016 to Oct 2018. Monthly trends should use Jan 2017 to Aug 2018; the months outside that range have only a handful of orders.
